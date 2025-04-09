@@ -1,12 +1,15 @@
 package Assign32starter;
 
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.net.Socket;
 import java.util.Base64;
+
 
 /**
  * The ClientGui class is a GUI frontend that displays an image grid, an input text box,
@@ -28,6 +31,9 @@ import java.util.Base64;
  * > Does not show when created. show() must be called to show he GUI.
  */
 public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClientGui.class);
+
     JDialog frame;
     PicturePanel picPanel;
     OutputPanel outputPanel;
@@ -37,10 +43,8 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
     OutputStream out;
     ObjectOutputStream os;
     BufferedReader bufferedReader;
-
-    // TODO: SHOULD NOT BE HARDCODED change to spec
-    String host = "localhost";
-    int port = 9000;
+    String host;
+    int port;
 
     /**
      * Construct dialog
@@ -97,7 +101,7 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         String imgBase64 = json.getString("image");
         byte[] imageBytes = Base64.getDecoder().decode(imgBase64);
         ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
-// Now, call the PicturePanel method to display this image.
+        // Now, call the PicturePanel method to display this image.
         picPanel.insertImage(bais, 0, 0);
 
         close(); //closing the connection to server
@@ -105,29 +109,52 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         // Now Client interaction only happens when the submit button is used, see "submitClicked()" method
     }
 
-    public static void main(String[] args) throws IOException {
-        // create the frame
+    /**
+     * The entry point for the application. Initializes and starts the ClientGui application.
+     * Parses command-line arguments for host and port configuration.
+     * @param args The command-line arguments where:
+     *             args[0] (optional) specifies the hostname (default is "localhost").
+     *             args[1] (optional) specifies the port number (default is 9000).
+     *             If the port number is invalid (e.g., out of range or not a number),
+     *             a default port (8080) will be used.
+     */
+    public static void main(String[] args) {
+        // Set default host and port
+        String host = args.length > 0 ? args[0] : "localhost";
+        int port = 9000; // Default port
 
-
-        try {
-            String host = "localhost";
-            int port = 8888;
-
-
-            ClientGui main = new ClientGui(host, port);
-            main.show(true);
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Parse port number if provided in arguments
+        if (args.length > 1) {
+            try {
+                port = Integer.parseInt(args[1]);
+                if (port < 0 || port > 65535) {
+                    System.out.println("Invalid port range. Please use a port between 0 and 65535. Using default port 8080.");
+                    port = 8080;
+                }
+            } catch (NumberFormatException ex) {
+                System.out.println("Invalid port number provided. Using default port: 8080");
+            }
         }
 
-
+        // Initialize and start the ClientGui
+        try {
+            ClientGui main = new ClientGui(host, port);
+            main.show(true);
+        } catch (IOException e) {
+            System.out.println("Failed to start the client. Please check your network connection or configuration and try again.");
+            if (logger != null) {
+                logger.error("I/O error occurred while starting the ClientGui with host {} and port {}", host, port, e);
+            }
+        } catch (Exception e) {
+            System.out.println("An unexpected error occurred. Please try again later.");
+            if (logger != null) {
+                logger.error("An unexpected error occurred: {}", e.getMessage(), e);
+            }
+        }
     }
 
     /**
      * Shows the current state in the GUI
-     *
      * @param makeModal - true to make a modal window, false disables modal behavior
      */
     public void show(boolean makeModal) {
@@ -138,7 +165,6 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
     /**
      * Creates a new game and set the size of the grid
-     *
      * @param dimension - the size of the grid will be dimension x dimension
      *                  No changes should be needed here
      */
@@ -149,7 +175,6 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
     /**
      * Insert an image into the grid at position (col, row)
-     *
      * @param filename - filename relative to the root directory
      * @param row      - the row to insert into
      * @param col      - the column to insert into
@@ -251,14 +276,17 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                     String imgBase64 = response.getString("image");
                     byte[] imageBytes = Base64.getDecoder().decode(imgBase64);
                     ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
+                    //create a new game with the response image
+                    this.newGame(1);
+                    // Insert the image in position (0,0) or as appropriate:
                     picPanel.insertImage(bais, 0, 0);
                 }
             }
 
             close(); // close connection after handling
         } catch (Exception e) {
-            e.printStackTrace();
             outputPanel.appendOutput("Error: " + e.getMessage());
+            logger.error("Error occurred during submit button handling", e);
         }
     }
 
@@ -289,10 +317,18 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
     public void close() {
         try {
             if (out != null) out.close();
+        } catch (IOException e) {
+            logger.error("Error closing output stream", e);
+        }
+        try {
             if (bufferedReader != null) bufferedReader.close();
+        } catch (IOException e) {
+            logger.error("Error closing buffered reader", e);
+        }
+        try {
             if (sock != null) sock.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            logger.error("Error closing socket", e);
         }
     }
 }

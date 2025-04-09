@@ -10,24 +10,81 @@ repositories {
 
 dependencies {
     implementation group: 'org.json', name: 'json', version: '20200518'
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+    // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.12.0'
+    // https://mvnrepository.com/artifact/org.mockito/mockito-junit-jupiter
+    testImplementation group: 'org.mockito', name: 'mockito-junit-jupiter', version: '5.12.0'
+    // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.12.0'
+    // https://mvnrepository.com/artifact/org.mockito/mockito-inline
+    testImplementation group: 'org.mockito', name: 'mockito-inline', version: '5.2.0'
 }
 
 task runClient(type: JavaExec) {
-  group 'gui'
-  description 'Displays a GUI for a game of concentration'
+    group 'gui'
+    description 'Displays a GUI for a game of concentration'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'Assign32starter.ClientGui'
+    standardInput = System.in
 
-  classpath = sourceSets.main.runtimeClasspath
-
-  main = 'Assign32starter.ClientGui'
-  standardInput = System.in
-  args "1"
+    // Ensure the arguments are passed in the correct order: host, then port
+    if (project.hasProperty('host') && project.hasProperty('port')) {
+        if (project.port.isInteger() && project.host) {
+            args project.host, project.port  // Flipped: host is first, port is second
+        } else {
+            throw new GradleException("Invalid arguments: 'port' must be an integer and 'host' must not be empty.")
+        }
+    } else if (project.hasProperty('host')) {
+        if (project.host) {
+            args project.host  // Pass host only as the first argument
+        } else {
+            throw new GradleException("Invalid argument: 'host' must not be empty.")
+        }
+    } else if (project.hasProperty('port')) {
+        if (project.port.isInteger()) {
+            args "localhost", project.port  // Default host is used if only port is provided
+        } else {
+            throw new GradleException("Invalid argument: 'port' must be an integer.")
+        }
+    } else {
+        args "localhost", "9000"  // Default values for both host and port
+    }
 }
 
 task runServer(type: JavaExec) {
-  group 'gui'
-  description 'Displays a GUI for a game of concentration'
+    group 'gui'
+    description 'Run the SockServer for the game over a specified port and host'
 
-  classpath = sourceSets.main.runtimeClasspath
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'Assign32starter.SockServer'
+    standardInput = System.in
 
-  main = 'Assign32starter.SockServer'
+    def port = project.hasProperty('port') ? project.port : null
+    def host = project.hasProperty('host') ? project.host : null
+
+    // Ensure valid port and host values with error handling
+    if (host != null && port != null) {
+        if (port.isInteger() && !host.trim().isEmpty()) {
+            args "$host", "$port"  // Flipped: host is first, port is second
+        } else {
+            throw new GradleException("Invalid arguments: 'port' must be an integer and 'host' must not be empty.")
+        }
+    } else if (host != null) {
+        if (!host.trim().isEmpty()) {
+            args "$host"
+        } else {
+            throw new GradleException("Invalid argument: 'host' must not be empty.")
+        }
+    } else if (port != null) {
+        if (port.isInteger()) {
+            args "localhost", "$port"  // Default host is "localhost" if only port is provided
+        } else {
+            throw new GradleException("Invalid argument: 'port' must be an integer.")
+        }
+    } else {
+        // Default values for both host and port
+        args "localhost", "9000"
+    }
 }
