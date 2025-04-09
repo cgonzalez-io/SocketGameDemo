@@ -17,7 +17,6 @@ import javax.imageio.ImageIO;
 
 /**
  * Creates the square image grid used in Assignment 3
- * 
  * Usage: gradle Maker --args="<image to slice> <size>"
  */
 public class GridMaker {
