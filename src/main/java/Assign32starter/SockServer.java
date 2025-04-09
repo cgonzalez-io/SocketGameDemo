@@ -30,8 +30,8 @@ public class SockServer {
     public static void main(String[] args) {
         String host = args.length > 0 ? args[0] : "localhost";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 9000;
-        try (ServerSocket serv = new ServerSocket(port)) {
-            serv.setSoTimeout(1000000); // 1000 seconds
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            serverSocket.setSoTimeout(1000000); // 1000 seconds
             System.out.println("Server ready for connetion." + host + ":" + port);
             logger.debug("Server ready for connetion." + host + ":" + port);
 
@@ -41,103 +41,36 @@ public class SockServer {
             // read in one object, the message. we know a string was written only by knowing what the client sent.
             // must cast the object from Object to desired type to be useful
             while (running) {
-                try (Socket sock = serv.accept();
-                     ObjectInputStream in = new ObjectInputStream(sock.getInputStream());
-                     PrintWriter outWrite = new PrintWriter(sock.getOutputStream(), true)) {
-                    // handle client connections)
-
-                    String s = (String) in.readObject();
-                    JSONObject response = new JSONObject();
-                    JSONObject json = new JSONObject(s); // the received request
-
-                    try {
-                        //Check for malformed JSON
-                        if (json.isEmpty() || !json.has("type")) {
-                            logger.error("Malformed JSON request.");
-                            throw new IllegalArgumentException("Malformed JSON request.");
-                        }
-                        // handle properly formatted JSON
-                        // Step 2: Start handshake and ask for player's name.
-                        else if (json.getString("type").equals("start")) {
-                            System.out.println("Received start request");
-                            response.put("type", "hello");
-                            response.put("value", "Hello, please tell me your name.");
-                            // Send a welcome image (converted to Base64)
-                            sendImg("img/hi.png", response);
-                            logger.debug("Sent welcome image.");
-                        }
-                        // Step 3: Receive player's name and send back the main menu
-                        else if (json.getString("type").equals("name")) {
-                            String playerName = json.getString("value");
-                            System.out.println("Player name received: " + playerName);
-                            response.put("type", "greeting");
-                            response.put("value", "Welcome " + playerName
-                                    + "! Please type 'play' to start the game, or 'quit' to exit.");
-                            logger.debug("Sent greeting message.");
-                        }
-                        // Step 4: Initiate the game when the player chooses to play
-                        else if (json.getString("type").equals("gameStart")) {
-                            logger.debug("Game initiation requested by client.");
-                            // Initialize game state (you could also create a GameState object).
-
-
-                            // For example, for a short game:
-                            int initialSkips = 2;  // short game: 2 skips allowed
-                            String correctAnswer = "The Dark Knight"; // example answer
-                            // Optionally save these in a per-connection GameState object
-
-                            // For this example, send back the first (most pixelated) image.
-                            response.put("type", "game");
-                            response.put("command", "start");
-                            response.put("message", "Here is your movie image. Enter your guess, or type 'next', 'skip', or 'remaining'.");
-                            // Reset image version to 1 (most pixelated)
-                            response.put("imageVersion", 1);
-                            // Include game state data if desired
-                            response.put("skipsRemaining", initialSkips);
-                            // Send the first image (e.g., TheDarkKnight1.png)
-                            sendImg("img/TheDarkKnight1.png", response);
-                            logger.debug("Sent first image.");
-                        }
-                        // Additional command handling (e.g., guesses) go here...
-                        else {
-                            response.put("type", "error");
-                            response.put("message", "Unknown request type.");
-                            logger.error("Unknown request type: " + json.getString("type"));
-                        }
-                        outWrite.println(response);
-                        outWrite.flush();
-                        // Send the response back to the client
-                        logger.debug("Sent response: " + response);
-                    } catch (JSONException e) {
-                        response.put("type", "error");
-                        response.put("message", "Malformed JSON request.");
-
-                    }
-
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    handleClient(clientSocket); // Offload to a method
+                } catch (IOException e) {
+                    logger.error("Error accepting client connection: {}", e.getMessage());
                 }
-                // Handle exceptions and cleanup
-                catch (IOException e) {
-                    logger.error("Error handling client connection: " + e.getMessage());
-                }
+
             }
 
-        } catch (Exception e) {
-            logger.error("Server error: " + e.getMessage());
+        } catch (IOException e) {
+            logger.error("Server encountered an error: {}", e.getMessage());
         }
     }
 
     public static JSONObject sendImg(String filename, JSONObject obj) throws Exception {
         File file = new File(filename);
+
         if (!file.exists()) {
-            logger.error("File not found: " + filename);
+            logger.error("File not found: {}", filename);
             throw new FileNotFoundException("File not found: " + filename);
         }
-        if (file.exists()) {
-            FileInputStream fis = new FileInputStream(file);
-            byte[] imageBytes = fis.readAllBytes(); // requires Java 9+, or use alternative for older Java versions
-            String imageBase64 = Base64.getEncoder().encodeToString(imageBytes);
+
+        try (FileInputStream fis = new FileInputStream(file)) { // Use try-with-resources for FileInputStream
+            byte[] imageBytes = fis.readAllBytes(); // Read file into bytes array
+            String imageBase64 = Base64.getEncoder().encodeToString(imageBytes); // Convert to Base64
             obj.put("image", imageBase64);
-            logger.info("Sent image: " + filename);
+            logger.info("Image successfully sent: {}", filename);
+        } catch (IOException e) {
+            logger.error("Error reading file: {}", filename, e);
+            throw e;
         }
         return obj;
     }
@@ -212,7 +145,113 @@ public class SockServer {
         return response;
     }
 
+    private static JSONObject processRequest(JSONObject requestJson) {
+        JSONObject response = new JSONObject();
 
+        try {
+            // Log the incoming request
+            logger.info("Processing request: {}", requestJson.toString());
+
+            // Validate the JSON request
+            if (requestJson.isEmpty() || !requestJson.has("type")) {
+                logger.error("Malformed JSON request: Missing 'type'. Request: {}", requestJson);
+                throw new IllegalArgumentException("Malformed JSON request: Missing 'type'.");
+            }
+
+            // Handle requests based on the "type" field
+            String requestType = requestJson.getString("type");
+            logger.debug("Request type: {}", requestType);
+
+            switch (requestType) {
+                case "start":
+                    logger.info("Handling 'start' request.");
+                    response.put("type", "hello");
+                    response.put("value", "Hello, please tell me your name.");
+                    try {
+                        sendImg("img/hi.png", response); // Example image
+                        logger.debug("Welcome image sent successfully.");
+                    } catch (Exception e) {
+                        logger.error("Failed to send welcome image: {}", e.getMessage());
+                        response.put("error", "Failed to send image: " + e.getMessage());
+                    }
+                    break;
+
+                case "name":
+                    String playerName = requestJson.getString("value");
+                    logger.info("Handling 'name' request. Player name: {}", playerName);
+                    response.put("type", "greeting");
+                    response.put("value", "Welcome " + playerName
+                            + "! Please type 'play' to start the game, or 'quit' to exit.");
+                    logger.debug("Greeting message prepared for player: {}", playerName);
+                    break;
+
+                case "gameStart":
+                    logger.info("Handling 'gameStart' request. Initializing game state.");
+                    // Example handling of starting the game
+                    GameState state = new GameState();
+                    state.gameStage = States.IN_GAME_WITH_IMAGE;
+                    state.skipsRemaining = GameType.SHORT.getValue();
+                    state.currentAnswer = "The Dark Knight";
+                    state.imageVersion = 1;
+                    response = handleGame(requestJson, state);
+                    logger.debug("Game start response prepared: {}", response);
+                    break;
+
+                default:
+                    logger.warn("Unknown request type received: {}", requestType);
+                    response.put("type", "error");
+                    response.put("message", "Unknown request type: " + requestType);
+                    break;
+            }
+
+        } catch (JSONException e) {
+            logger.error("Invalid JSON request: {}. Error: {}", requestJson, e.getMessage());
+            response.put("type", "error");
+            response.put("message", "Invalid JSON request: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Processing error for request: {}. Error: {}", requestJson.toString(), e.getMessage());
+            response.put("type", "error");
+            response.put("message", "Processing error: " + e.getMessage());
+        }
+
+        // Log the generated response
+        logger.info("Generated response: {}", response);
+
+        return response;
+    }
+
+    private static void handleClient(Socket clientSocket) {
+        logger.debug("Accepted a connection from {}", clientSocket.getRemoteSocketAddress());
+
+        // Use try-with-resources to ensure proper cleanup
+        try (ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
+             PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+
+            // Read and process the client's input
+            String input = (String) in.readObject(); // Expecting a string; validate on the client side
+            JSONObject requestJson = new JSONObject(input);
+            logger.info("Received JSON: {}", requestJson);
+
+            // Process the request and generate a response
+            JSONObject response = processRequest(requestJson);
+
+            // Send the response
+            out.println(response);
+            out.flush();
+            logger.debug("Response sent to client: {}", response);
+
+        } catch (Exception e) {
+            logger.error("Error handling client connection: {}", e.getMessage());
+        } finally {
+            try {
+                if (!clientSocket.isClosed()) {
+                    clientSocket.close();
+                }
+            } catch (IOException e) {
+                logger.error("Error closing client socket: {}", e.getMessage());
+            }
+        }
+    }
 
     private GameState initGameState(States gameStage, String currentAnswer, GameType gameType) {
         GameState state = new GameState();
