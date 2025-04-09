@@ -235,6 +235,25 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
             if (response.has("skipsRemaining")) {
                 outputPanel.appendOutput("Skips remaining: " + response.getInt("skipsRemaining"));
             }
+            // Now, if the response indicates to "play", the user can then send a game start command.
+            // For example, if the user types "play":
+            if (input.equalsIgnoreCase("play")) {
+                request = new JSONObject();
+                request.put("type", "gameStart");
+                os.writeObject(request.toString());
+                os.flush();
+
+                responseStr = bufferedReader.readLine();
+                response = new JSONObject(responseStr);
+                outputPanel.appendOutput(response.getString("message"));
+                // Decode and display the game image:
+                if (response.has("image")) {
+                    String imgBase64 = response.getString("image");
+                    byte[] imageBytes = Base64.getDecoder().decode(imgBase64);
+                    ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
+                    picPanel.insertImage(bais, 0, 0);
+                }
+            }
 
             close(); // close connection after handling
         } catch (Exception e) {
