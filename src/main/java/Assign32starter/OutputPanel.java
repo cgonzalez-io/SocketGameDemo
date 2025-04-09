@@ -27,6 +27,7 @@ public class OutputPanel extends JPanel {
     private final JButton submit;
     private final JTextArea area;
     private final ArrayList<EventHandlers> handlers = new ArrayList<>();
+
     /**
      * Constructor
      */
@@ -112,6 +113,7 @@ public class OutputPanel extends JPanel {
 
     /**
      * Get input text box text
+     *
      * @return input box value
      */
     public String getInputText() {
@@ -120,6 +122,7 @@ public class OutputPanel extends JPanel {
 
     /**
      * Set input text box text
+     *
      * @param newText the text to put in the text box
      */
     public void setInputText(String newText) {
@@ -128,6 +131,7 @@ public class OutputPanel extends JPanel {
 
     /**
      * Set points in label box
+     *
      * @param points current points in round
      */
     public void setPoints(int points) {
@@ -136,6 +140,7 @@ public class OutputPanel extends JPanel {
 
     /**
      * Register event observers
+     *
      * @param handlerObj - the object that will handle events
      */
     public void addEventHandlers(EventHandlers handlerObj) {
@@ -144,6 +149,7 @@ public class OutputPanel extends JPanel {
 
     /**
      * Append a message to the output panel
+     *
      * @param message - the message to print
      */
     public void appendOutput(String message) {

@@ -63,28 +63,29 @@ task runServer(type: JavaExec) {
 
     def port = project.hasProperty('port') ? project.port : null
     def host = project.hasProperty('host') ? project.host : null
+    def timeoutArg = project.hasProperty('timeout') ? project.timeout : "0"
 
     // Ensure valid port and host values with error handling
     if (host != null && port != null) {
         if (port.isInteger() && !host.trim().isEmpty()) {
-            args "$host", "$port"  // Flipped: host is first, port is second
+            args "$host", "$port", "$timeoutArg"  // host, port and timeoutArg
         } else {
             throw new GradleException("Invalid arguments: 'port' must be an integer and 'host' must not be empty.")
         }
     } else if (host != null) {
         if (!host.trim().isEmpty()) {
-            args "$host"
+            args "$host", "9000", "$timeoutArg"  // Use default port if not provided
         } else {
             throw new GradleException("Invalid argument: 'host' must not be empty.")
         }
     } else if (port != null) {
         if (port.isInteger()) {
-            args "localhost", "$port"  // Default host is "localhost" if only port is provided
+            args "localhost", "$port", "$timeoutArg"  // Default host is "localhost" if only port is provided
         } else {
             throw new GradleException("Invalid argument: 'port' must be an integer.")
         }
     } else {
         // Default values for both host and port
-        args "localhost", "9000"
+        args "localhost", "9000", "$timeoutArg"
     }
 }
