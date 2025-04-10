@@ -31,22 +31,20 @@ public class SockServer {
      * Logs server and connection-related events for debugging and monitoring purposes.
      *
      * @param args Command-line arguments to configure the server.
-     *             args[0] specifies the server host (defaults to "localhost" if not provided).
-     *             args[1] specifies the server port (defaults to 9000 if not provided).
-     *             args[2] specifies the timeout in seconds to stop the server (optional).
+     *             args[0] specifies the server port (defaults to 9000 if not provided).
+     *             args[1] specifies the timeout in seconds to stop the server (optional).
      */
     public static void main(String[] args) {
-        String host = args.length > 0 ? args[0] : "localhost";
-        int port = args.length > 1 ? Integer.parseInt(args[1]) : 9000;
+        int port = args.length > 1 ? Integer.parseInt(args[0]) : 9000;
         // Optionally, a third argument will be a timeout (in seconds) to stop the server.
-        int stopAfterSeconds = args.length > 2 ? Integer.parseInt(args[2]) : 0;
+        int stopAfterSeconds = args.length > 2 ? Integer.parseInt(args[1]) : 0;
 
         // Schedule a stop task if a timeout is provided.
         if (stopAfterSeconds > 0) {
             new java.util.Timer().schedule(new java.util.TimerTask() {
                 @Override
                 public void run() {
-                    System.out.println("Server timeout reached. Stopping server.");
+                    logger.info("Server timeout reached. Stopping server.");
                     stopServer();
                 }
             }, stopAfterSeconds * 1000L);  // Convert seconds to milliseconds
@@ -55,8 +53,7 @@ public class SockServer {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             // Set a connection timeout if desired (e.g., 1000 seconds as before)
             serverSocket.setSoTimeout(1000000);
-            System.out.println("Server ready for connection at " + host + ":" + port);
-            logger.debug("Server ready for connection at " + host + ":" + port);
+            logger.debug("Server ready for connection at " + serverSocket.getInetAddress() + ":" + port);
             while (running) {
                 try {
                     Socket clientSocket = serverSocket.accept();
@@ -71,7 +68,7 @@ public class SockServer {
                 }
 
             }
-            System.out.println("Server shutting down.");
+            logger.info("Server shutting down.");
         } catch (IOException e) {
             logger.error("Server encountered an error: {}", e.getMessage());
         }

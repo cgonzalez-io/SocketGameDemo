@@ -20,6 +20,8 @@ dependencies {
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.12.0'
     // https://mvnrepository.com/artifact/org.mockito/mockito-inline
     testImplementation group: 'org.mockito', name: 'mockito-inline', version: '5.2.0'
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+    runtimeOnly group: 'ch.qos.logback', name: 'logback-classic', version: '1.5.16'
 }
 
 task runClient(type: JavaExec) {
@@ -28,29 +30,19 @@ task runClient(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'Assign32starter.ClientGui'
     standardInput = System.in
+    classpath = sourceSets.main.runtimeClasspath
 
-    // Ensure the arguments are passed in the correct order: host, then port
-    if (project.hasProperty('host') && project.hasProperty('port')) {
-        if (project.port.isInteger() && project.host) {
-            args project.host, project.port  // Flipped: host is first, port is second
-        } else {
-            throw new GradleException("Invalid arguments: 'port' must be an integer and 'host' must not be empty.")
-        }
-    } else if (project.hasProperty('host')) {
-        if (project.host) {
-            args project.host  // Pass host only as the first argument
-        } else {
-            throw new GradleException("Invalid argument: 'host' must not be empty.")
-        }
-    } else if (project.hasProperty('port')) {
-        if (project.port.isInteger()) {
-            args "localhost", project.port  // Default host is used if only port is provided
-        } else {
-            throw new GradleException("Invalid argument: 'port' must be an integer.")
-        }
-    } else {
-        args "localhost", "9000"  // Default values for both host and port
-    }
+    // Default values for host and port
+    def defaultHost = "localhost"
+    def defaultPort = 8888
+
+    // Use shorter property names "host" and "port"
+    inputs.property("host", project.hasProperty("host") ? project.host : defaultHost)
+    inputs.property("port", project.hasProperty("port") ? project.port : defaultPort)
+
+    args inputs.properties["host"] // Pass host argument to main class
+    args inputs.properties["port"] // Pass port argument to main class
+
 }
 
 task runServer(type: JavaExec) {
@@ -58,34 +50,17 @@ task runServer(type: JavaExec) {
     description 'Run the SockServer for the game over a specified port and host'
 
     classpath = sourceSets.main.runtimeClasspath
-    main = 'Assign32starter.SockServer'
+    mainClass = 'Assign32starter.SockServer'
     standardInput = System.in
 
-    def port = project.hasProperty('port') ? project.port : null
-    def host = project.hasProperty('host') ? project.host : null
-    def timeoutArg = project.hasProperty('timeout') ? project.timeout : "0"
+    // Default values for port and timeout
+    def defaultPort = 8888
+    def defaultTimeout = 0
 
-    // Ensure valid port and host values with error handling
-    if (host != null && port != null) {
-        if (port.isInteger() && !host.trim().isEmpty()) {
-            args "$host", "$port", "$timeoutArg"  // host, port and timeoutArg
-        } else {
-            throw new GradleException("Invalid arguments: 'port' must be an integer and 'host' must not be empty.")
-        }
-    } else if (host != null) {
-        if (!host.trim().isEmpty()) {
-            args "$host", "9000", "$timeoutArg"  // Use default port if not provided
-        } else {
-            throw new GradleException("Invalid argument: 'host' must not be empty.")
-        }
-    } else if (port != null) {
-        if (port.isInteger()) {
-            args "localhost", "$port", "$timeoutArg"  // Default host is "localhost" if only port is provided
-        } else {
-            throw new GradleException("Invalid argument: 'port' must be an integer.")
-        }
-    } else {
-        // Default values for both host and port
-        args "localhost", "9000", "$timeoutArg"
-    }
+    inputs.property("port", project.hasProperty("port") ? project.port : defaultPort)
+    inputs.property("timeout", project.hasProperty("timeout") ? project.timeout : defaultTimeout)
+
+    args inputs.properties["port"] // Pass port argument to main class
+    args inputs.properties["timeout"] // Pass timeout argument to main class
+
 }
