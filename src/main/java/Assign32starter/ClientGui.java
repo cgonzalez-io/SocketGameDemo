@@ -47,6 +47,7 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
     int port;
     boolean registered = false; // Flag to check if the player is registered
     private String sessionID = null;
+    private String gameLength = "short"; // default game length
 
 
     /**
@@ -68,7 +69,10 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         frame.setMinimumSize(new Dimension(500, 500));
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
-        // setup the top picture frame
+        // Initialize the menu (separate method)
+        initializeMenu();
+
+        // Setup the top picture panel.
         picPanel = new PicturePanel();
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
@@ -88,7 +92,6 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         frame.add(outputPanel, c);
 
         picPanel.newGame(1);
-        insertImage("img/TheDarkKnight1.png", 0, 0);
 
         open(); // opening server connection here
         currentMess = "{'type': 'start'}"; // very initial start message for the connection
@@ -107,10 +110,11 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         outputPanel.appendOutput(response.getString("value")); // putting the message in the outputpanel
 
         // reading out the image (abstracted here as just a string)
-        System.out.println("Pretend I got an image: " + response.getString("image"));
+        logger.info("Pretend I got an image: " + response.getString("image"));
         // Assuming the server sends sessionID along with the greeting.
         if (response.has("sessionID")) {
             sessionID = response.getString("sessionID");
+            logger.debug("Session ID: " + sessionID);
         }
         // Decode and display the welcome image:
         if (response.has("image")) {
@@ -250,7 +254,7 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
             } else if (input.equalsIgnoreCase("play")) {
                 // Start or restart the game.
                 request.put("type", "gameStart");
-
+                request.put("gameLength", gameLength);  // New field added here
             } else {
                 // Process in-game commands.
                 request.put("type", "game");
@@ -266,14 +270,11 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                     request.put("command", "remaining");
                 } else if (input.equalsIgnoreCase("quit")) {
                     request.put("command", "quit");
-                    outputPanel.appendOutput("Goodbye!");
-                    close();
-                    return;
                 } else if (input.equalsIgnoreCase("help")) {
                     outputPanel.appendOutput("Available commands: 'guess: [your answer]', 'next', 'skip', 'remaining', 'quit'.");
                     return;
                 } else {
-                    outputPanel.appendOutput("Unknown command. Try 'guess: [your answer]', 'next', 'skip', or 'remaining', 'quit'.");
+                    outputPanel.appendOutput("Unknown command. Try 'guess: [your answer]', 'next', 'skip', 'remaining', 'quit'.");
                     return;
                 }
             }
@@ -310,13 +311,16 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
             if (response.has("skipsRemaining")) {
                 outputPanel.appendOutput("Skips remaining: " + response.getInt("skipsRemaining"));
             }
+            if (response.has("quit")) {
+                outputPanel.appendOutput("You have quit the game.");
+                close();
+            }
 
         } catch (Exception e) {
             outputPanel.appendOutput("Error: " + e.getMessage());
             logger.error("Error occurred during submit button handling", e);
         }
     }
-
 
     /**
      * Key listener for the input text box
@@ -341,6 +345,12 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
     }
 
+    /**
+     * Closes resources associated with the ClientGui, including the output stream,
+     * buffered reader, and socket. If an error occurs during the closing of any resource,
+     * it is logged without re-throwing the exception to ensure that the method completes
+     * execution for all resources.
+     */
     public void close() {
         try {
             if (out != null) out.close();
@@ -357,5 +367,76 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         } catch (IOException e) {
             logger.error("Error closing socket", e);
         }
+    }
+
+    /**
+     * Initializes the main menu of the application, including the session menu and game menu.
+     * The session menu provides information about the current session, such as session ID,
+     * player status, and connection status. The game menu allows the user to start a game
+     * with a chosen length or quit the game.
+     * The method creates a menu bar and sets it on the application's main frame. Each menu
+     * item includes relevant action listeners to handle user interactions:
+     * - The "Session Info" menu item displays details about the session in a dialog box,
+     * including session ID, registration status, and connection status.
+     * - The "Start" menu item prompts the user to select a game length (Short, Medium, Long)
+     * and initiates a game accordingly.
+     * - The "Quit" menu item triggers a quit command, likely signaling the end of the game.
+     * The method connects these actions with the application's state and relevant components,
+     * such as the output panel and socket connection. It ensures that the menu is functional
+     * and integrated with the client's workflow.
+     */
+    private void initializeMenu() {
+        JMenuBar menuBar = new JMenuBar();
+
+        // Session Menu
+        JMenu sessionMenu = new JMenu("Session");
+        JMenuItem sessionInfo = new JMenuItem("Session Info");
+        sessionInfo.addActionListener(e -> {
+            String info = "Session ID: " + (sessionID != null ? sessionID : "None") + "\n" +
+                    "Connected to: " + host + ":" + port;
+            JOptionPane.showMessageDialog(frame, info, "Session Info", JOptionPane.INFORMATION_MESSAGE);
+        });
+        sessionMenu.add(sessionInfo);
+        menuBar.add(sessionMenu);
+
+        // Game Menu
+        JMenu gameMenu = new JMenu("Game");
+
+        // Start game option (with a prompt for game length).
+        // Inside initializeMenu() in ClientGui:
+        JMenuItem startGame = new JMenuItem("Start");
+        startGame.addActionListener(e -> {
+            // Prompt the user for game length (short, medium, long).
+            String[] options = {"Short", "Medium", "Long"};
+            String length = (String) JOptionPane.showInputDialog(frame, "Select game length:",
+                    "Game Length", JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            if (length != null) {
+                gameLength = length.toLowerCase();
+                outputPanel.appendOutput("Starting " + length + " game...");
+                // Now submit the "play" command with the gameLength included.
+                submitCommand("play");
+            }
+        });
+        gameMenu.add(startGame);
+
+        // Quit game option.
+        JMenuItem quitGame = new JMenuItem("Quit");
+        quitGame.addActionListener(e -> submitCommand("quit"));
+        gameMenu.add(quitGame);
+
+        menuBar.add(gameMenu);
+
+        // Attach the menu bar to the frame's root pane.
+        frame.getRootPane().setJMenuBar(menuBar);
+    }
+
+    /**
+     * Helper method to simulate command submission from the menu.
+     *
+     * @param command The command to submit (e.g., "play", "quit").
+     */
+    private void submitCommand(String command) {
+        outputPanel.setInputText(command);
+        submitClicked(); // Use the existing submission logic.
     }
 }

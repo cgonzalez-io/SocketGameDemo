@@ -16,6 +16,7 @@ public class GameState {
     States gameStage;
     long gameStartTime;
     String currentMovie; // set to the current movie's title
+    int correctGuesses = 0; // number of correct guesses
 
     /**
      * Default constructor for the GameState class.
@@ -35,36 +36,50 @@ public class GameState {
     }
 
     /**
-     * Determines whether the current instance is equal to the specified object.
-     * Two GameState objects are considered equal if their respective fields,
-     * such as imageVersion, skipsRemaining, gameStartTime, currentAnswer,
-     * gameStage, and currentMovie, are equal.
+     * Checks whether this GameState instance is equal to the specified object.
+     * Two GameState objects are considered equal if all their corresponding fields,
+     * including imageVersion, skipsRemaining, currentAnswer, gameStage, gameStartTime,
+     * and currentMovie, are equal.
      *
-     * @param o the object to compare with the current GameState instance
-     * @return {@code true} if the specified object is a GameState instance
-     * and all relevant fields are equal; otherwise, {@code false}
+     * @param o the object to be compared for equality with this GameState instance
+     * @return true if the specified object is equal to this GameState instance; false otherwise
      */
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof GameState gameState)) return false;
-        return getImageVersion() == gameState.getImageVersion() && getSkipsRemaining() == gameState.getSkipsRemaining() && getGameStartTime() == gameState.getGameStartTime() && Objects.equals(getCurrentAnswer(), gameState.getCurrentAnswer()) && getGameStage() == gameState.getGameStage() && Objects.equals(getCurrentMovie(), gameState.getCurrentMovie());
+        return getImageVersion() == gameState.getImageVersion() && getSkipsRemaining() == gameState.getSkipsRemaining() && getGameStartTime() == gameState.getGameStartTime() && getCorrectGuesses() == gameState.getCorrectGuesses() && Objects.equals(getCurrentAnswer(), gameState.getCurrentAnswer()) && getGameStage() == gameState.getGameStage() && Objects.equals(getCurrentMovie(), gameState.getCurrentMovie());
     }
 
     /**
-     * Computes the hash code for the current instance of the GameState object.
-     * The hash code is calculated based on the values of the following fields:
-     * - imageVersion
-     * - skipsRemaining
-     * - currentAnswer
-     * - gameStage
-     * - gameStartTime
-     * - currentMovie
+     * Computes the hash code for the GameState object. The hash code is calculated
+     * based on the values of the following fields: imageVersion, skipsRemaining,
+     * currentAnswer, gameStage, gameStartTime, currentMovie, and correctGuesses.
      *
-     * @return the hash code value for this GameState instance
+     * @return an integer representing the hash code of the current GameState object
      */
     @Override
     public int hashCode() {
-        return Objects.hash(getImageVersion(), getSkipsRemaining(), getCurrentAnswer(), getGameStage(), getGameStartTime(), getCurrentMovie());
+        return Objects.hash(getImageVersion(), getSkipsRemaining(), getCurrentAnswer(), getGameStage(), getGameStartTime(), getCurrentMovie(), getCorrectGuesses());
+    }
+
+    /**
+     * Returns a string representation of the GameState object. The representation includes
+     * the values of the fields: imageVersion, skipsRemaining, currentAnswer, gameStage,
+     * gameStartTime, currentMovie, and correctGuesses.
+     *
+     * @return a string describing the current state of the GameState object
+     */
+    @Override
+    public String toString() {
+        return "GameState{" +
+                "imageVersion=" + imageVersion +
+                ", skipsRemaining=" + skipsRemaining +
+                ", currentAnswer='" + currentAnswer + '\'' +
+                ", gameStage=" + gameStage +
+                ", gameStartTime=" + gameStartTime +
+                ", currentMovie='" + currentMovie + '\'' +
+                ", correctGuesses=" + correctGuesses +
+                '}';
     }
 
     /**
@@ -181,12 +196,60 @@ public class GameState {
     }
 
     /**
+     * Retrieves the number of correct guesses made in the current game state.
+     *
+     * @return the number of correct guesses as an integer
+     */
+    // Getter and setter for correct guesses.
+    public int getCorrectGuesses() {
+        return correctGuesses;
+    }
+
+    /**
+     * Increments the count of correct guesses in the game state.
+     * This method increases the value of the `correctGuesses` field by one,
+     * typically to track the player's correct answers during gameplay.
+     */
+    public void incrementCorrectGuesses() {
+        this.correctGuesses++;
+    }
+
+    /**
+     * Resets the count of correct guesses in the game state.
+     * This method sets the {@code correctGuesses} field to 0,
+     * effectively clearing the record of correct answers provided during the game.
+     */
+    public void resetCorrectGuesses() {
+        this.correctGuesses = 0;
+    }
+
+    /**
+     * Computes the score of the game based on the number of correct guesses and
+     * the duration of the game in seconds. The score is calculated as the number
+     * of correct guesses per second multiplied by 100. If the duration of the game
+     * is zero, the method returns a score of zero to avoid division by zero.
+     *
+     * @return the computed score as a double value, or 0 if the duration is zero
+     */
+    // Method to compute the score.
+    public double computeScore() {
+        long durationMillis = System.currentTimeMillis() - gameStartTime;
+        double durationSeconds = durationMillis / 1000.0;
+        if (durationSeconds == 0) {
+            return 0;
+        }
+        return (correctGuesses / durationSeconds) * 100;
+    }
+
+    /**
      * Copies the state of the specified {@code GameState} object into the current instance.
      * If the provided {@code GameState} object is {@code null}, the method does nothing.
+     *
      * @param other the {@code GameState} object from which to copy the state.
      *              This includes fields such as {@code imageVersion}, {@code skipsRemaining},
      *              {@code currentAnswer}, {@code gameStage}, {@code gameStartTime}, and {@code currentMovie}.
      */
+    // copyFrom method as before:
     public void copyFrom(GameState other) {
         if (other == null) return;
         this.imageVersion = other.imageVersion;
@@ -195,6 +258,7 @@ public class GameState {
         this.gameStage = other.gameStage;
         this.gameStartTime = other.gameStartTime;
         this.currentMovie = other.currentMovie;
+        this.correctGuesses = other.correctGuesses;
     }
 
 }

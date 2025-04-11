@@ -170,17 +170,36 @@ public class ClientHandler implements Runnable {
                 case "gameStart":
                     // Initialize game state for the session.
                     logger.info("Initializing game for client {}", clientSocket.getRemoteSocketAddress());
+
+                    // Check if the client has specified a gameLength; default to "short" if not.
+                    String gameLength = requestJson.optString("gameLength", "short").toLowerCase();
+                    GameType type;
+                    switch (gameLength) {
+                        case "medium":
+                            type = GameType.MEDIUM;
+                            break;
+                        case "long":
+                            type = GameType.LONG;
+                            break;
+                        default:
+                            type = GameType.SHORT;
+                            break;
+                    }
+                    gameState.setSkipsRemaining(type.getValue());
+                    // Choose a random movie
+                    Movie selected = SockServer.chooseRandomMovie();
+                    // Update the game state with the randomly selected movie.
                     gameState.setGameStage(States.IN_GAME_WITH_IMAGE);
-                    gameState.setSkipsRemaining(GameType.SHORT.getValue());
-                    gameState.setCurrentAnswer("The Dark Knight");
-                    gameState.setCurrentMovie("TheDarkKnight");
-                    gameState.setImageVersion(1);
+                    gameState.setCurrentMovie(selected.getMovieName());
+                    gameState.setCurrentAnswer(selected.getCorrectAnswer());
+                    gameState.setImageVersion(1);  // Start with the first image
                     response.put("type", "game");
                     response.put("command", "start");
                     response.put("ok", true);
                     response.put("message", "Here is your movie image. Enter your guess, or type 'next', 'skip', or 'remaining'.");
                     response.put("imageVersion", gameState.getImageVersion());
                     response.put("skipsRemaining", gameState.getSkipsRemaining());
+                    response.put("gameLength", gameLength);
                     SockServer.sendImg("img/" + gameState.getCurrentMovie() + "1.png", response);
                     break;
 
@@ -254,9 +273,17 @@ public class ClientHandler implements Runnable {
                             // End the game session.
                             response.put("ok", true);
                             response.put("command", "quit");
-                            response.put("message", "Thank you for playing. Goodbye!");
+                            // Compute score.
+                            double score = gameState.computeScore();
+                            response.put("finalScore", score);
+                            // Optionally, include the leaderboard.
+                            response.put("leaderboard", Leaderboard.getLeaderboard());
+                            response.put("message", "Thank you for playing. Your score: " + String.format("%.2f", score));
                             gameState.setGameStage(States.GAME_OVER);
+                            // Optionally, remove the session.
+                            // SessionManager.removeSession(sessionID);
                             break;
+
 
                         default:
                             response.put("ok", false);

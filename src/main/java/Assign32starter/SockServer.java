@@ -10,7 +10,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
+import java.util.Random;
 
 
 /**
@@ -19,6 +22,14 @@ import java.util.Base64;
  */
 public class SockServer {
     private static final Logger logger = LoggerFactory.getLogger(SockServer.class);
+    // Inside SockServer class:
+    private static final List<Movie> movies = Arrays.asList(
+            new Movie("TheDarkKnight", "The Dark Knight"),
+            new Movie("TheLionKing", "The Lion King"),
+            new Movie("JurassicPark", "Jurassic Park"),
+            new Movie("BackToTheFuture", "Back to the Future"),
+            new Movie("LordOfTheRings", "The Lord of the Rings")
+    );
     private static volatile boolean running = true;
 
     public static void stopServer() {
@@ -105,5 +116,16 @@ public class SockServer {
         }
         return obj;
     }
+
+    /**
+     * Selects and returns a random movie from the list of available movies.
+     *
+     * @return a randomly chosen Movie object from the collection of movies
+     */
+    public static Movie chooseRandomMovie() {
+        Random rand = new Random();
+        return movies.get(rand.nextInt(movies.size()));
+    }
+
 
 }
