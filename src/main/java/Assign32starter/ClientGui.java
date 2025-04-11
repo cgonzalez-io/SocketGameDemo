@@ -33,12 +33,14 @@ import java.util.Base64;
 public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientGui.class);
-
+    private final JLabel timerLabel = new JLabel("Time Remaining: --");
+    private final JTabbedPane tabbedPane;
+    private final JPanel gamePanel; // Panel that will contain your game UI (PicturePanel + OutputPanel)
+    private final LeaderboardPanel leaderboardPanel;
     JDialog frame;
     PicturePanel picPanel;
     OutputPanel outputPanel;
     String currentMess;
-
     Socket sock;
     OutputStream out;
     ObjectOutputStream os;
@@ -48,7 +50,8 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
     boolean registered = false; // Flag to check if the player is registered
     private String sessionID = null;
     private String gameLength = "short"; // default game length
-
+    private Timer gameTimer;
+    private int remainingSeconds; // duration determined from the game length.
 
     /**
      * Constructs a ClientGui object, initializes the GUI components, establishes
@@ -65,20 +68,25 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         this.port = port;
 
         frame = new JDialog();
-        frame.setLayout(new GridBagLayout());
+        frame.setLayout(new BorderLayout());
         frame.setMinimumSize(new Dimension(500, 500));
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
         // Initialize the menu (separate method)
         initializeMenu();
 
-        // Setup the top picture panel.
+        // Create a tabbed pane.
+        tabbedPane = new JTabbedPane();
+
+        // Build the game panel (using your existing components).
+        gamePanel = new JPanel(new GridBagLayout());
+        // Configure gamePanel with PicturePanel and OutputPanel as before:
         picPanel = new PicturePanel();
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
         c.gridy = 0;
         c.weighty = 0.25;
-        frame.add(picPanel, c);
+        gamePanel.add(picPanel, c);
 
         // setup the input, button, and output area
         c = new GridBagConstraints();
@@ -89,9 +97,28 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         c.fill = GridBagConstraints.BOTH;
         outputPanel = new OutputPanel();
         outputPanel.addEventHandlers(this);
-        frame.add(outputPanel, c);
-
+        gamePanel.add(outputPanel, c);
         picPanel.newGame(1);
+
+        // Add the game panel as the first tab.
+        tabbedPane.addTab("Game", gamePanel);
+
+        // Create and add the leaderboard panel as the second tab.
+        leaderboardPanel = new LeaderboardPanel();
+        tabbedPane.addTab("Leaderboard", leaderboardPanel);
+
+        // Add a ChangeListener so that when the leaderboard tab is selected,
+        // the client sends a request to update the leaderboard.
+        tabbedPane.addChangeListener(e -> {
+            if (tabbedPane.getSelectedComponent() == leaderboardPanel) {
+                // When the leaderboard tab is active, request updated data from the server.
+                submitCommand("leaderboard");
+            }
+        });
+
+        // Attach tabbedPane to the frame.
+        frame.add(tabbedPane, BorderLayout.CENTER);
+
 
         open(); // opening server connection here
         currentMess = "{'type': 'start'}"; // very initial start message for the connection
@@ -268,6 +295,8 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                     request.put("command", "skip");
                 } else if (input.equalsIgnoreCase("remaining")) {
                     request.put("command", "remaining");
+                } else if (input.equalsIgnoreCase("leaderboard")) {
+                    request.put("command", "leaderboard");
                 } else if (input.equalsIgnoreCase("quit")) {
                     request.put("command", "quit");
                 } else if (input.equalsIgnoreCase("help")) {
@@ -311,7 +340,21 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
             if (response.has("skipsRemaining")) {
                 outputPanel.appendOutput("Skips remaining: " + response.getInt("skipsRemaining"));
             }
-            if (response.has("quit")) {
+
+            // *** Final score & leaderboard handling ***
+            if (response.has("finalScore")) {
+                double finalScore = response.getDouble("finalScore");
+                outputPanel.appendOutput("Final Score: " + String.format("%.2f", finalScore));
+            }
+            if (response.optString("type", "").equals("leaderboard")) {
+                String lbText = response.getString("leaderboard");
+                leaderboardPanel.updateLeaderboard(lbText);
+                outputPanel.appendOutput("Leaderboard updated.");
+            }
+
+
+            // If quitting, close the connection.
+            if (response.optString("command", "").equals("quit")) {
                 outputPanel.appendOutput("You have quit the game.");
                 close();
             }
@@ -393,10 +436,16 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         JMenuItem sessionInfo = new JMenuItem("Session Info");
         sessionInfo.addActionListener(e -> {
             String info = "Session ID: " + (sessionID != null ? sessionID : "None") + "\n" +
-                    "Connected to: " + host + ":" + port;
+                    "Player: " + (registered ? outputPanel.getInputText() : "Not registered") + "\n" +
+                    "Connected: " + (sock != null && sock.isConnected());
             JOptionPane.showMessageDialog(frame, info, "Session Info", JOptionPane.INFORMATION_MESSAGE);
         });
         sessionMenu.add(sessionInfo);
+
+        // Add the timer label as well.
+        sessionMenu.addSeparator();
+        sessionMenu.add(timerLabel);
+
         menuBar.add(sessionMenu);
 
         // Game Menu
@@ -411,9 +460,26 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
             String length = (String) JOptionPane.showInputDialog(frame, "Select game length:",
                     "Game Length", JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
             if (length != null) {
-                gameLength = length.toLowerCase();
+                // Set the game duration based on length.
+                int duration;
+                switch (length.toLowerCase()) {
+                    case "medium":
+                        duration = 60;
+                        break;
+                    case "long":
+                        duration = 90;
+                        break;
+                    case "short":
+                    default:
+                        duration = 30;
+                        break;
+                }
                 outputPanel.appendOutput("Starting " + length + " game...");
-                // Now submit the "play" command with the gameLength included.
+                // Set the game length field if needed.
+                gameLength = length.toLowerCase();
+                // Start the timer.
+                startGameTimer(duration);
+                // Send a play command.
                 submitCommand("play");
             }
         });
@@ -439,4 +505,24 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
         outputPanel.setInputText(command);
         submitClicked(); // Use the existing submission logic.
     }
+
+    private void startGameTimer(int durationSeconds) {
+        remainingSeconds = durationSeconds;
+        // Update the timerLabel immediately.
+        timerLabel.setText("Time Remaining: " + remainingSeconds + " seconds");
+
+        // Create a Swing Timer that fires every 1 second.
+        gameTimer = new Timer(1000, e -> {
+            remainingSeconds--;
+            timerLabel.setText("Time Remaining: " + remainingSeconds + " seconds");
+            if (remainingSeconds <= 0) {
+                gameTimer.stop();
+                // Time is up: Automatically send a "quit" command
+                submitCommand("quit");
+                outputPanel.appendOutput("Time is up! Game over.");
+            }
+        });
+        gameTimer.start();
+    }
+
 }

@@ -17,6 +17,8 @@ public class GameState {
     long gameStartTime;
     String currentMovie; // set to the current movie's title
     int correctGuesses = 0; // number of correct guesses
+    private String playerName = ""; // name of the player
+    private int gameDuration = 30; // duration of the game in seconds
 
     /**
      * Default constructor for the GameState class.
@@ -36,30 +38,66 @@ public class GameState {
     }
 
     /**
-     * Checks whether this GameState instance is equal to the specified object.
-     * Two GameState objects are considered equal if all their corresponding fields,
-     * including imageVersion, skipsRemaining, currentAnswer, gameStage, gameStartTime,
-     * and currentMovie, are equal.
+     * Retrieves the duration of the game.
      *
-     * @param o the object to be compared for equality with this GameState instance
-     * @return true if the specified object is equal to this GameState instance; false otherwise
+     * @return the total duration of the game as an integer
+     */
+    public int getGameDuration() {
+        return gameDuration;
+    }
+
+    /**
+     * Sets the duration of the game.
+     *
+     * @param gameDuration the duration of the game in seconds, represented as an integer
+     */
+    public void setGameDuration(int gameDuration) {
+        this.gameDuration = gameDuration;
+    }
+
+    /**
+     * Retrieves the name of the player in the current game state.
+     *
+     * @return the player's name as a String
+     */
+    public String getPlayerName() {
+        return playerName;
+    }
+
+    /**
+     * Sets the name of the player in the game state.
+     *
+     * @param playerName the name of the player as a String
+     */
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
+    }
+
+    /**
+     * Compares this GameState object with the specified object for equality.
+     * Two GameState objects are considered equal if all their corresponding fields
+     * are equal, including imageVersion, skipsRemaining, gameStartTime,
+     * correctGuesses, currentAnswer, gameStage, currentMovie, and playerName.
+     *
+     * @param o the object to compare with this GameState for equality
+     * @return true if the specified object is equal to this GameState, false otherwise
      */
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof GameState gameState)) return false;
-        return getImageVersion() == gameState.getImageVersion() && getSkipsRemaining() == gameState.getSkipsRemaining() && getGameStartTime() == gameState.getGameStartTime() && getCorrectGuesses() == gameState.getCorrectGuesses() && Objects.equals(getCurrentAnswer(), gameState.getCurrentAnswer()) && getGameStage() == gameState.getGameStage() && Objects.equals(getCurrentMovie(), gameState.getCurrentMovie());
+        return getImageVersion() == gameState.getImageVersion() && getSkipsRemaining() == gameState.getSkipsRemaining() && getGameStartTime() == gameState.getGameStartTime() && getCorrectGuesses() == gameState.getCorrectGuesses() && Objects.equals(getCurrentAnswer(), gameState.getCurrentAnswer()) && getGameStage() == gameState.getGameStage() && Objects.equals(getCurrentMovie(), gameState.getCurrentMovie()) && Objects.equals(getPlayerName(), gameState.getPlayerName());
     }
 
     /**
-     * Computes the hash code for the GameState object. The hash code is calculated
-     * based on the values of the following fields: imageVersion, skipsRemaining,
-     * currentAnswer, gameStage, gameStartTime, currentMovie, and correctGuesses.
+     * Computes the hash code for the GameState object. The hash code is based on the
+     * values of the following fields: imageVersion, skipsRemaining, currentAnswer,
+     * gameStage, gameStartTime, currentMovie, correctGuesses, and playerName.
      *
-     * @return an integer representing the hash code of the current GameState object
+     * @return the hash code of the GameState object as an integer
      */
     @Override
     public int hashCode() {
-        return Objects.hash(getImageVersion(), getSkipsRemaining(), getCurrentAnswer(), getGameStage(), getGameStartTime(), getCurrentMovie(), getCorrectGuesses());
+        return Objects.hash(getImageVersion(), getSkipsRemaining(), getCurrentAnswer(), getGameStage(), getGameStartTime(), getCurrentMovie(), getCorrectGuesses(), getPlayerName());
     }
 
     /**
@@ -79,6 +117,7 @@ public class GameState {
                 ", gameStartTime=" + gameStartTime +
                 ", currentMovie='" + currentMovie + '\'' +
                 ", correctGuesses=" + correctGuesses +
+                ", playerName='" + playerName + '\'' +
                 '}';
     }
 
@@ -206,6 +245,15 @@ public class GameState {
     }
 
     /**
+     * Sets the number of correct guesses made in the current game state.
+     *
+     * @param correctGuesses the number of correct guesses to set, represented as an integer
+     */
+    public void setCorrectGuesses(int correctGuesses) {
+        this.correctGuesses = correctGuesses;
+    }
+
+    /**
      * Increments the count of correct guesses in the game state.
      * This method increases the value of the `correctGuesses` field by one,
      * typically to track the player's correct answers during gameplay.
@@ -235,9 +283,7 @@ public class GameState {
     public double computeScore() {
         long durationMillis = System.currentTimeMillis() - gameStartTime;
         double durationSeconds = durationMillis / 1000.0;
-        if (durationSeconds == 0) {
-            return 0;
-        }
+        if (durationSeconds == 0) return 0;
         return (correctGuesses / durationSeconds) * 100;
     }
 
@@ -259,6 +305,8 @@ public class GameState {
         this.gameStartTime = other.gameStartTime;
         this.currentMovie = other.currentMovie;
         this.correctGuesses = other.correctGuesses;
+        this.playerName = other.playerName;
+        this.gameDuration = other.gameDuration;
     }
 
 }

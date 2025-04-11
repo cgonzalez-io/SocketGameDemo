@@ -161,6 +161,8 @@ public class ClientHandler implements Runnable {
                 case "name":
                     // The client has provided their name.
                     String playerName = requestJson.getString("value");
+                    // Save the player's name in the GameState.
+                    gameState.setPlayerName(playerName);
                     response.put("type", "greeting");
                     response.put("ok", true);
                     response.put("value", "Welcome " + playerName
@@ -173,19 +175,30 @@ public class ClientHandler implements Runnable {
 
                     // Check if the client has specified a gameLength; default to "short" if not.
                     String gameLength = requestJson.optString("gameLength", "short").toLowerCase();
+                    // Determine duration and skip count based on gameLength.
+                    int duration;
                     GameType type;
                     switch (gameLength) {
                         case "medium":
+                            duration = 60;
                             type = GameType.MEDIUM;
                             break;
                         case "long":
+                            duration = 90;
                             type = GameType.LONG;
                             break;
+                        case "short":
                         default:
+                            duration = 30;
                             type = GameType.SHORT;
                             break;
                     }
+                    // Set game duration and skip count.
+                    gameState.setGameDuration(duration);
                     gameState.setSkipsRemaining(type.getValue());
+                    // Set game start time.
+                    gameState.setGameStartTime(System.currentTimeMillis());
+
                     // Choose a random movie
                     Movie selected = SockServer.chooseRandomMovie();
                     // Update the game state with the randomly selected movie.
@@ -196,10 +209,10 @@ public class ClientHandler implements Runnable {
                     response.put("type", "game");
                     response.put("command", "start");
                     response.put("ok", true);
-                    response.put("message", "Here is your movie image. Enter your guess, or type 'next', 'skip', or 'remaining'.");
+                    response.put("message", "Game started (" + gameLength + " mode). Here is your movie image. Enter your guess, or type 'next', 'skip', or 'remaining'.");
                     response.put("imageVersion", gameState.getImageVersion());
                     response.put("skipsRemaining", gameState.getSkipsRemaining());
-                    response.put("gameLength", gameLength);
+                    response.put("gameDuration", duration);
                     SockServer.sendImg("img/" + gameState.getCurrentMovie() + "1.png", response);
                     break;
 
@@ -209,16 +222,32 @@ public class ClientHandler implements Runnable {
                     String command = requestJson.optString("command", "");
                     switch (command) {
                         case "guess":
-                            // Compare client's guess with current answer.
+                            // Check if the game is still within the allowed duration.
+                            long elapsed = System.currentTimeMillis() - gameState.getGameStartTime();
+                            if (elapsed > gameState.getGameDuration() * 1000L) {
+                                response.put("ok", false);
+                                response.put("message", "Time is up! Game over.");
+                                // Optionally compute and send the score, update leaderboard, etc.
+                                double score = gameState.computeScore();
+                                response.put("finalScore", score);
+                                // Leaderboard update logic (see below)
+                                response.put("leaderboard", Leaderboard.getFormattedLeaderboard());
+                                gameState.setGameStage(States.GAME_OVER);
+                                break;
+                            }
+                            // Otherwise process the guess:
                             String clientGuess = requestJson.getString("guess").trim();
                             if (clientGuess.equalsIgnoreCase(gameState.getCurrentAnswer())) {
+                                gameState.incrementCorrectGuesses();
                                 response.put("ok", true);
                                 response.put("result", true);
                                 response.put("message", "Correct! Here comes your next movie.");
+                                gameState.incrementCorrectGuesses();
                                 // Update state with a new movie for demonstration.
+                                selected = SockServer.chooseRandomMovie();
                                 gameState.setImageVersion(1);
-                                gameState.setCurrentMovie("TheLionKing");
-                                gameState.setCurrentAnswer("The Lion King");
+                                gameState.setCurrentMovie(selected.getMovieName());
+                                gameState.setCurrentAnswer(selected.getCorrectAnswer());
                                 SockServer.sendImg("img/" + gameState.getCurrentMovie() + "1.png", response);
                             } else {
                                 // Incorrect guess.
@@ -250,9 +279,11 @@ public class ClientHandler implements Runnable {
                         case "skip":
                             if (gameState.getSkipsRemaining() > 0) {
                                 gameState.setSkipsRemaining(gameState.getSkipsRemaining() - 1);
+                                // Choose a new movie and reset the image version.
+                                selected = SockServer.chooseRandomMovie();
                                 gameState.setImageVersion(1);
-                                gameState.setCurrentMovie("JurassicPark");
-                                gameState.setCurrentAnswer("Jurassic Park");
+                                gameState.setCurrentMovie(selected.getMovieName());
+                                gameState.setCurrentAnswer(selected.getCorrectAnswer());
                                 response.put("ok", true);
                                 response.put("message", "Movie skipped. Here is your new movie image.");
                                 response.put("skipsRemaining", gameState.getSkipsRemaining());
@@ -273,15 +304,23 @@ public class ClientHandler implements Runnable {
                             // End the game session.
                             response.put("ok", true);
                             response.put("command", "quit");
-                            // Compute score.
                             double score = gameState.computeScore();
                             response.put("finalScore", score);
-                            // Optionally, include the leaderboard.
-                            response.put("leaderboard", Leaderboard.getLeaderboard());
+                            // Create a unique key for the leaderboard using the player's name and IP address.
+                            String playerKey = gameState.getPlayerName() + "@" +
+                                    ((java.net.InetSocketAddress) clientSocket.getRemoteSocketAddress()).getAddress().getHostAddress();
+                            Leaderboard.updateScore(playerKey, score);
+                            response.put("leaderboard", Leaderboard.getFormattedLeaderboard());
                             response.put("message", "Thank you for playing. Your score: " + String.format("%.2f", score));
                             gameState.setGameStage(States.GAME_OVER);
                             // Optionally, remove the session.
                             // SessionManager.removeSession(sessionID);
+                            break;
+                        case "leaderboard":
+                            // Respond with persistent leaderboard information.
+                            response.put("ok", true);
+                            response.put("type", "leaderboard");
+                            response.put("leaderboard", Leaderboard.getFormattedLeaderboard());
                             break;
 
 
