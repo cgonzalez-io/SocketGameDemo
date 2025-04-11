@@ -273,6 +273,12 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
                 // Wait for the response.
                 String responseStr = bufferedReader.readLine();
+                if (responseStr == null) {
+                    outputPanel.appendOutput("Error: No response received from server during registration.");
+                    logger.error("Received null response during registration. SessionID: " + sessionID);
+                    close();
+                    return;
+                }
                 JSONObject response = new JSONObject(responseStr);
 
                 // Display the greeting.
@@ -288,6 +294,9 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                 if (input.toLowerCase().startsWith("guess:")) {
                     request.put("command", "guess");
                     String answer = input.substring(6).trim();
+                    if (answer.isEmpty() || answer.isBlank()) {
+                        answer = "test"; // Default answer if empty
+                    }
                     request.put("guess", answer);
                 } else if (input.equalsIgnoreCase("next")) {
                     request.put("command", "next");
@@ -314,6 +323,11 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
             // Wait for response from server:
             String responseStr = bufferedReader.readLine();
+            if (responseStr == null) {
+                outputPanel.appendOutput("Error: No response received from server.");
+                logger.error("Received null response from server for sessionID: " + sessionID);
+                return;
+            }
             JSONObject response = new JSONObject(responseStr);
 
             // Display the main greeting or message from the server:
