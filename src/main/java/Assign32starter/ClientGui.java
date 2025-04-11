@@ -108,6 +108,10 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
         // reading out the image (abstracted here as just a string)
         System.out.println("Pretend I got an image: " + response.getString("image"));
+        // Assuming the server sends sessionID along with the greeting.
+        if (response.has("sessionID")) {
+            sessionID = response.getString("sessionID");
+        }
         // Decode and display the welcome image:
         if (response.has("image")) {
             String imgBase64 = response.getString("image");
@@ -227,6 +231,7 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
 
             String input = outputPanel.getInputText().trim();
             JSONObject request = new JSONObject();
+            request.put("sessionID", sessionID);
 
             // Use the state flag to decide if it's registration or game command.
             if (!registered) {
@@ -241,22 +246,16 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                 String responseStr = bufferedReader.readLine();
                 JSONObject response = new JSONObject(responseStr);
 
-                // Assuming the server sends sessionID along with the greeting.
-                if (response.has("sessionID")) {
-                    sessionID = response.getString("sessionID");
-                }
-
                 // Display the greeting.
                 outputPanel.appendOutput(response.getString("value"));
                 registered = true;
             } else if (input.equalsIgnoreCase("play")) {
                 // Start or restart the game.
                 request.put("type", "gameStart");
-                request.put("sessionID", sessionID);
+
             } else {
                 // Process in-game commands.
                 request.put("type", "game");
-                request.put("sessionID", sessionID);
                 if (input.toLowerCase().startsWith("guess:")) {
                     request.put("command", "guess");
                     String answer = input.substring(6).trim();

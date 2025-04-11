@@ -124,7 +124,7 @@ public class ClientHandler implements Runnable {
 
             // For most requests (other than registration), a sessionID is required.
             // Here we assume the "name" request is for registration and does not include a sessionID.
-            if (!requestType.equals("name") && !requestType.equals("start")) {
+            if (!requestType.equals("start")) {
                 if (!requestJson.has("sessionID")) {
                     response.put("type", "error");
                     response.put("ok", false);
@@ -152,17 +152,17 @@ public class ClientHandler implements Runnable {
                     response.put("type", "hello");
                     response.put("ok", true);
                     response.put("value", "Hello, please tell me your name.");
+                    // Create a new persistent session.
+                    String sessionId = SessionManager.createSession(this.gameState);
+                    response.put("sessionID", sessionId);
                     SockServer.sendImg("img/hi.png", response); // Sends a welcome image.
                     break;
 
                 case "name":
                     // The client has provided their name.
                     String playerName = requestJson.getString("value");
-                    // Create a new persistent session.
-                    String sessionId = SessionManager.createSession(this.gameState);
                     response.put("type", "greeting");
                     response.put("ok", true);
-                    response.put("sessionID", sessionId);
                     response.put("value", "Welcome " + playerName
                             + "! Please type 'play' to start the game, or 'quit' to exit.");
                     break;
