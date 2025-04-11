@@ -66,21 +66,38 @@ public class ClientHandler implements Runnable {
      */
     @Override
     public void run() {
+        logger.info("ClientHandler started for client: {}", clientSocket.getRemoteSocketAddress());
         try (ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
-            // Read the request from the client:
-            String input = (String) in.readObject();
-            JSONObject requestJson = new JSONObject(input);
-            logger.info("Received from client {}: {}", clientSocket.getRemoteSocketAddress(), requestJson);
+            // Continue reading requests until the game is over or the connection is terminated.
+            while (!gameState.getGameStage().equals(States.GAME_OVER)) {
+                String input;
+                try {
+                    input = (String) in.readObject();
+                    logger.info("Received from client {}: {}", clientSocket.getRemoteSocketAddress(), input);
+                } catch (Exception e) {
+                    logger.warn("Client {} disconnected or sent invalid data: {}", clientSocket.getRemoteSocketAddress(), e.getMessage());
+                    break; // Exit if the client disconnects.
+                }
 
-            // Process the request using an instance method that uses gameState:
-            JSONObject response = processRequest(requestJson);
+                // Process the request and build a response.
+                JSONObject requestJson = new JSONObject(input);
+                logger.info("Received from client {}: {}", clientSocket.getRemoteSocketAddress(), requestJson);
 
-            // Send the response back to the client:
-            out.println(response);
-            out.flush();
-            logger.info("Response sent to client {}: {}", clientSocket.getRemoteSocketAddress(), response);
+                // Process the request using an instance method that uses gameState:
+                JSONObject response = processRequest(requestJson);
+
+                // Send the response back to the client:
+                out.println(response);
+                out.flush();
+                logger.info("Response sent to client {}: {}", clientSocket.getRemoteSocketAddress(), response);
+
+                // If the response type indicates the session is over (e.g., for a "quit" command), break.
+                if (response.optString("type").equals("game") && response.optString("command").equals("quit")) {
+                    break;
+                }
+            }
         } catch (Exception e) {
             logger.error("Error processing client {}: {}", clientSocket.getRemoteSocketAddress(), e.getMessage(), e);
         } finally {
@@ -128,7 +145,6 @@ public class ClientHandler implements Runnable {
                     logger.info("Initializing game for client {}", clientSocket.getRemoteSocketAddress());
                     gameState.setGameStage(States.IN_GAME_WITH_IMAGE);
                     gameState.setSkipsRemaining(GameType.SHORT.getValue());
-                    // For demonstration, we set an expected answer and movie.
                     gameState.setCurrentAnswer("The Dark Knight");
                     gameState.setCurrentMovie("TheDarkKnight");
                     gameState.setImageVersion(1);
@@ -138,7 +154,6 @@ public class ClientHandler implements Runnable {
                     response.put("message", "Here is your movie image. Enter your guess, or type 'next', 'skip', or 'remaining'.");
                     response.put("imageVersion", gameState.getImageVersion());
                     response.put("skipsRemaining", gameState.getSkipsRemaining());
-                    // Send the first game image.
                     SockServer.sendImg("img/" + gameState.getCurrentMovie() + "1.png", response);
                     break;
 
@@ -151,11 +166,10 @@ public class ClientHandler implements Runnable {
                             // Compare client's guess with current answer.
                             String clientGuess = requestJson.getString("guess").trim();
                             if (clientGuess.equalsIgnoreCase(gameState.getCurrentAnswer())) {
-                                // Correct guess.
                                 response.put("ok", true);
                                 response.put("result", true);
                                 response.put("message", "Correct! Here comes your next movie.");
-                                // For demonstration, update game state with a new movie.
+                                // Update state with a new movie for demonstration.
                                 gameState.setImageVersion(1);
                                 gameState.setCurrentMovie("TheLionKing");
                                 gameState.setCurrentAnswer("The Lion King");
@@ -171,8 +185,10 @@ public class ClientHandler implements Runnable {
                             break;
 
                         case "next":
-                            // Provide a less pixelated image if available.
-                            if (gameState.getImageVersion() < 4) {
+                            if (gameState.getCurrentMovie() == null) {
+                                response.put("ok", false);
+                                response.put("message", "Game not started. Please type 'play' to start the game.");
+                            } else if (gameState.getImageVersion() < 4) {
                                 gameState.setImageVersion(gameState.getImageVersion() + 1);
                                 response.put("ok", true);
                                 response.put("message", "Providing a clearer image.");
@@ -186,10 +202,8 @@ public class ClientHandler implements Runnable {
                             break;
 
                         case "skip":
-                            // Skip to a new movie if skips remain.
                             if (gameState.getSkipsRemaining() > 0) {
                                 gameState.setSkipsRemaining(gameState.getSkipsRemaining() - 1);
-                                // For demonstration, select a new movie.
                                 gameState.setImageVersion(1);
                                 gameState.setCurrentMovie("JurassicPark");
                                 gameState.setCurrentAnswer("Jurassic Park");
@@ -212,6 +226,7 @@ public class ClientHandler implements Runnable {
                         case "quit":
                             // End the game session.
                             response.put("ok", true);
+                            response.put("command", "quit");
                             response.put("message", "Thank you for playing. Goodbye!");
                             gameState.setGameStage(States.GAME_OVER);
                             break;

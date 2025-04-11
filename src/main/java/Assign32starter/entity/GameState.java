@@ -30,6 +30,8 @@ public class GameState {
         this.currentAnswer = "";
         this.gameStage = States.NOT_STARTED;
         this.gameStartTime = 0;
+        this.currentMovie = "";
+        this.gameStartTime = System.currentTimeMillis();
     }
 
     /**
@@ -37,9 +39,10 @@ public class GameState {
      * Two GameState objects are considered equal if their respective fields,
      * such as imageVersion, skipsRemaining, gameStartTime, currentAnswer,
      * gameStage, and currentMovie, are equal.
+     *
      * @param o the object to compare with the current GameState instance
      * @return {@code true} if the specified object is a GameState instance
-     *         and all relevant fields are equal; otherwise, {@code false}
+     * and all relevant fields are equal; otherwise, {@code false}
      */
     @Override
     public boolean equals(Object o) {
@@ -56,6 +59,7 @@ public class GameState {
      * - gameStage
      * - gameStartTime
      * - currentMovie
+     *
      * @return the hash code value for this GameState instance
      */
     @Override
@@ -65,6 +69,7 @@ public class GameState {
 
     /**
      * Retrieves the title of the current movie in the game state.
+     *
      * @return the title of the current movie as a String
      */
     public String getCurrentMovie() {
@@ -73,6 +78,7 @@ public class GameState {
 
     /**
      * Sets the current movie associated with the game state.
+     *
      * @param currentMovie the title of the current movie to set
      */
     public void setCurrentMovie(String currentMovie) {
