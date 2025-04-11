@@ -119,10 +119,9 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
             ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
             picPanel.insertImage(bais, 0, 0);
         }
-        close();
 
-        // Now Client interaction only happens when the submit button is used, see "submitClicked()" method
     }
+
 
     /**
      * The entry point for the application. Initializes and starts the ClientGui application.
@@ -227,7 +226,6 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
     @Override
     public void submitClicked() {
         try {
-            open(); // open connection to server
 
             String input = outputPanel.getInputText().trim();
             JSONObject request = new JSONObject();
@@ -266,8 +264,16 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                     request.put("command", "skip");
                 } else if (input.equalsIgnoreCase("remaining")) {
                     request.put("command", "remaining");
+                } else if (input.equalsIgnoreCase("quit")) {
+                    request.put("command", "quit");
+                    outputPanel.appendOutput("Goodbye!");
+                    close();
+                    return;
+                } else if (input.equalsIgnoreCase("help")) {
+                    outputPanel.appendOutput("Available commands: 'guess: [your answer]', 'next', 'skip', 'remaining', 'quit'.");
+                    return;
                 } else {
-                    outputPanel.appendOutput("Unknown command. Try 'guess: [your answer]', 'next', 'skip', or 'remaining'.");
+                    outputPanel.appendOutput("Unknown command. Try 'guess: [your answer]', 'next', 'skip', or 'remaining', 'quit'.");
                     return;
                 }
             }
@@ -305,7 +311,6 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                 outputPanel.appendOutput("Skips remaining: " + response.getInt("skipsRemaining"));
             }
 
-            close(); // close connection after handling
         } catch (Exception e) {
             outputPanel.appendOutput("Error: " + e.getMessage());
             logger.error("Error occurred during submit button handling", e);
