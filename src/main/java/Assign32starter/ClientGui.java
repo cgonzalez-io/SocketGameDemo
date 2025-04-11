@@ -518,7 +518,7 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
             if (remainingSeconds <= 0) {
                 gameTimer.stop();
                 // Time is up: Automatically send a "quit" command
-                submitCommand("quit");
+                submitCommand("guess:"); //auto send empty guess to force check timer
                 outputPanel.appendOutput("Time is up! Game over.");
             }
         });
