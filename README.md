@@ -1,94 +1,190 @@
-# Assignment 3 Starter Code
+# 🎬 Assignment 3 - Movie Guessing Game
 
-## Grid Image Maker Usage
+Video Link: [YouTube](https://www.youtube.com/playlist?list=PLNJf3PhE4U6D9uje1Qz3t28TqqqIoDkZQ)
+
+## 📦 Project Overview
+
+This project implements a **movie guessing game** using a client-server model. The client displays pixelated images of
+movie posters and allows users to guess the title, skip, or view a less pixelated version. A leaderboard is maintained
+to track top scores.
+
+---
+
+## 🛠️ Running the System
 
 ### Terminal
 
-```
-gradle runServer
-```
+#### Start the Server
 
-```
-gradle runClient
+```bash
+gradle runServer -Pport=9000
 ```
 
-## GUI Usage
+#### Start the Client
 
-### Code
+```bash
+gradle runClient -Phost=192.168.1.1 Pport=9000
+```
 
-1. Create an instance of the GUI
+---
 
-   ```
-   ClientGui main = new ClientGui();
-   ```
+## 🖼️ GUI Overview
 
-2. Create a new game and give it a grid dimension
+The GUI has three main components:
 
-   ```
-   // the pineapple example is 2, but choose whatever dimension of grid you want
-   // you can change the dimension to see how the grid changes size
-   main.newGame(2); 
-   ```
+- **Image Grid** (via `PicturePanel`)
+- **Input and Output Panel** (via `OutputPanel`)
+- **Tabbed Pane** (Game View and Leaderboard View)
+- **Menu Bar** (Game controls, session info)
 
-*Depending on how you want to run the system, 3 and 4 can be run how you want*
+---
 
-3. Insert image
+## ✅ Quick Start in Code
 
-   ```
-   // the filename is the path to an image
-   // the first coordinate(0) is the row to insert in to
-   // the second coordinate(1) is the column to insert in to
-   // you can change coordinates to see the image move around the box
-   main.insertImage("img/Pineapple-Upside-down-cake_0_1.jpg", 0, 1);
-   ```
+```java
+ClientGui main = new ClientGui("localhost", 9000);
+main.
 
-4. Show GUI
+newGame(2); // 2x2 grid
+main.
 
-   ```
-   // true makes the dialog modal meaning that all interaction allowed is 
-   //   in the windows methods.
-   // false makes the dialog a pop-up which allows the background program 
-   //   that spawned it to continue and process in the background.
-   main.show(true);
-   ```
+insertImage("img/Pineapple.jpg",0,1); // Optional test
+main.
 
-For the images: The numbering is alwas starting at 1 which is the "main" view, increasing numbers are always turning to the right. So 2 is a 90 degree right turn of 1, while 4 is a 90 degree left turn of 1. 
+show(true); // Show modal dialog
+```
 
-### ClientGui.java
-#### Summary
+---
 
-> This is the main GUI to display the picture grid. 
+## 📋 ClientGui Features
 
-#### Methods
-  - show(boolean modal) :  Shows the GUI frame with the current state
-     * NOTE: modal means that it opens the GUI and suspends background processes. Processing still happens in the GUI If it is desired to continue processing in the background, set modal to false.
-   * newGame(int dimension) :  Start a new game with a grid of dimension x dimension size
-   * insertImage(String filename, int row, int col) :  Inserts an image into the grid, this is when you know the file name, use the PicturePanel insertImage if you have a ByteStream
-   * appendOutput(String message) :  Appends text to the output panel
-   * submitClicked() :  Button handler for the submit button in the output panel
+### 🧩 Core Methods
 
-### PicturePanel.java
+- `show(boolean modal)` — Displays the window
+- `newGame(int dimension)` — Initializes a new grid
+- `insertImage(String filename, int row, int col)` — Adds image to grid
+- `appendOutput(String message)` — Displays message in output panel
+- `submitClicked()` — Handles guess/command logic
 
-#### Summary
+---
 
-> This is the image grid
+### 🧠 Menu Bar
 
-#### Methods
+- **Session Info** — View session ID and player name
+- **Game Options:**
+    - **Start** — Choose game length (Short/Medium/Long)
+    - **Quit** — Ends game and connection
 
-- newGame(int dimension) :  Reset the board and set grid size to dimension x dimension
-- insertImage(String fname, int row, int col) :  Insert an image at (col, row)
-- insertImage(ByteArrayInputStream fname, int row, int col) :  Insert an image at (col, row)
+---
 
-### OutputPanel.java
+### 🗂️ Tabbed Pane
 
-#### Summary
+- **Game View** — Grid and input/output panel
+- **Leaderboard View** — Scrollable leaderboard (persistent)
 
-> This is the input box, submit button, and output text area panel
+Leaderboard score formula:
 
-#### Methods
+```
+score = (correct guesses / game duration in seconds) * 100
+```
 
-- getInputText() :  Get the input text box text
-- setInputText(String newText) :  Set the input text box text
-- addEventHandlers(EventHandlers handlerObj) :  Add event listeners
-- appendOutput(String message) :  Add message to output text
+---
 
+## 📷 PicturePanel Summary
+
+```java
+newGame(int dimension);
+
+insertImage(String filename, int row, int col);
+
+insertImage(ByteArrayInputStream imgBytes, int row, int col);
+```
+
+---
+
+## ✍️ OutputPanel Summary
+
+```java
+getInputText();
+
+setInputText(String text);
+
+addEventHandlers(EventHandlers handlerObj);
+
+appendOutput(String message);
+```
+
+---
+
+## 🧾 Game Commands (JSON Format)
+
+### 📨 Guess
+
+```json
+{
+  "type": "game",
+  "sessionID": "<session-id>",
+  "command": "guess",
+  "guess": "The Matrix"
+}
+```
+
+### 📨 Next
+
+```json
+{
+  "type": "game",
+  "sessionID": "<session-id>",
+  "command": "next"
+}
+```
+
+### 📨 Skip
+
+```json
+{
+  "type": "game",
+  "sessionID": "<session-id>",
+  "command": "skip"
+}
+```
+
+### 📨 Remaining
+
+```json
+{
+  "type": "game",
+  "sessionID": "<session-id>",
+  "command": "remaining"
+}
+```
+
+### 📨 Quit
+
+```json
+{
+  "type": "game",
+  "sessionID": "<session-id>",
+  "command": "quit"
+}
+```
+
+### 📨 Leaderboard
+
+```json
+{
+  "type": "game",
+  "sessionID": "<session-id>",
+  "command": "leaderboard"
+}
+```
+
+---
+
+## 🖼️ Image Conventions
+
+- `1` = most pixelated
+- `4` = clearest
+- Server always starts with `1`
+
+---
