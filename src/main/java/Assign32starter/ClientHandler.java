@@ -109,14 +109,16 @@ public class ClientHandler implements Runnable {
                 case "start":
                     // Initial handshake: request the player's name.
                     response.put("type", "hello");
+                    response.put("ok", true);
                     response.put("value", "Hello, please tell me your name.");
-                    SockServer.sendImg("img/hi.png", response); // Reuse the static sendImg method.
+                    SockServer.sendImg("img/hi.png", response); // Sends a welcome image.
                     break;
 
                 case "name":
                     // The client has provided their name.
                     String playerName = requestJson.getString("value");
                     response.put("type", "greeting");
+                    response.put("ok", true);
                     response.put("value", "Welcome " + playerName
                             + "! Please type 'play' to start the game, or 'quit' to exit.");
                     break;
@@ -126,20 +128,105 @@ public class ClientHandler implements Runnable {
                     logger.info("Initializing game for client {}", clientSocket.getRemoteSocketAddress());
                     gameState.setGameStage(States.IN_GAME_WITH_IMAGE);
                     gameState.setSkipsRemaining(GameType.SHORT.getValue());
-                    gameState.setCurrentAnswer("The Dark Knight"); // Example answer
-                    gameState.setImageVersion(1); // Start with the first image version.
+                    // For demonstration, we set an expected answer and movie.
+                    gameState.setCurrentAnswer("The Dark Knight");
+                    gameState.setCurrentMovie("TheDarkKnight");
+                    gameState.setImageVersion(1);
                     response.put("type", "game");
                     response.put("command", "start");
+                    response.put("ok", true);
                     response.put("message", "Here is your movie image. Enter your guess, or type 'next', 'skip', or 'remaining'.");
                     response.put("imageVersion", gameState.getImageVersion());
                     response.put("skipsRemaining", gameState.getSkipsRemaining());
-                    // Send the first image for the game.
-                    SockServer.sendImg("img/TheDarkKnight1.png", response);
+                    // Send the first game image.
+                    SockServer.sendImg("img/" + gameState.getCurrentMovie() + "1.png", response);
                     break;
 
-                // You can add additional game-related command handling (guess, next, etc.)
+                case "game":
+                    // Process in-game commands.
+                    // The request should include a "command" field.
+                    String command = requestJson.optString("command", "");
+                    switch (command) {
+                        case "guess":
+                            // Compare client's guess with current answer.
+                            String clientGuess = requestJson.getString("guess").trim();
+                            if (clientGuess.equalsIgnoreCase(gameState.getCurrentAnswer())) {
+                                // Correct guess.
+                                response.put("ok", true);
+                                response.put("result", true);
+                                response.put("message", "Correct! Here comes your next movie.");
+                                // For demonstration, update game state with a new movie.
+                                gameState.setImageVersion(1);
+                                gameState.setCurrentMovie("TheLionKing");
+                                gameState.setCurrentAnswer("The Lion King");
+                                SockServer.sendImg("img/" + gameState.getCurrentMovie() + "1.png", response);
+                            } else {
+                                // Incorrect guess.
+                                response.put("ok", true);
+                                response.put("result", false);
+                                response.put("message", "Incorrect. Try again.");
+                                // Optionally, repeat the current question.
+                                response.put("question", "What is your guess for the current movie?");
+                            }
+                            break;
+
+                        case "next":
+                            // Provide a less pixelated image if available.
+                            if (gameState.getImageVersion() < 4) {
+                                gameState.setImageVersion(gameState.getImageVersion() + 1);
+                                response.put("ok", true);
+                                response.put("message", "Providing a clearer image.");
+                                response.put("imageVersion", gameState.getImageVersion());
+                                String imgFile = "img/" + gameState.getCurrentMovie() + gameState.getImageVersion() + ".png";
+                                SockServer.sendImg(imgFile, response);
+                            } else {
+                                response.put("ok", false);
+                                response.put("message", "No more 'next' images available for this movie.");
+                            }
+                            break;
+
+                        case "skip":
+                            // Skip to a new movie if skips remain.
+                            if (gameState.getSkipsRemaining() > 0) {
+                                gameState.setSkipsRemaining(gameState.getSkipsRemaining() - 1);
+                                // For demonstration, select a new movie.
+                                gameState.setImageVersion(1);
+                                gameState.setCurrentMovie("JurassicPark");
+                                gameState.setCurrentAnswer("Jurassic Park");
+                                response.put("ok", true);
+                                response.put("message", "Movie skipped. Here is your new movie image.");
+                                response.put("skipsRemaining", gameState.getSkipsRemaining());
+                                SockServer.sendImg("img/" + gameState.getCurrentMovie() + "1.png", response);
+                            } else {
+                                response.put("ok", false);
+                                response.put("message", "No skips remaining.");
+                            }
+                            break;
+
+                        case "remaining":
+                            // Return the number of skips remaining.
+                            response.put("ok", true);
+                            response.put("skipsRemaining", gameState.getSkipsRemaining());
+                            break;
+
+                        case "quit":
+                            // End the game session.
+                            response.put("ok", true);
+                            response.put("message", "Thank you for playing. Goodbye!");
+                            gameState.setGameStage(States.GAME_OVER);
+                            break;
+
+                        default:
+                            response.put("ok", false);
+                            response.put("message", "Unknown game command: " + command);
+                            break;
+                    }
+                    response.put("type", "game");
+                    break;
+
                 default:
                     response.put("type", "error");
+                    response.put("ok", false);
                     response.put("message", "Unknown request type: " + requestType);
                     logger.warn("Unknown request type received: {}", requestType);
                     break;
@@ -147,6 +234,7 @@ public class ClientHandler implements Runnable {
         } catch (Exception e) {
             logger.error("Processing error: {}", e.getMessage(), e);
             response.put("type", "error");
+            response.put("ok", false);
             response.put("message", "Processing error: " + e.getMessage());
         }
         return response;

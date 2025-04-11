@@ -15,7 +15,7 @@ public class GameState {
     String currentAnswer;// set to the current movie's title
     States gameStage;
     long gameStartTime;
-    // additional fields as needed
+    String currentMovie; // set to the current movie's title
 
     /**
      * Default constructor for the GameState class.
@@ -33,29 +33,50 @@ public class GameState {
     }
 
     /**
-     * Compares this GameState object with another object to determine equality.
-     * Two GameState objects are considered equal if their image version, skips remaining,
-     * game start time, current answer, and game stage are identical.
-     *
-     * @param o the object to be compared for equality with this GameState
-     * @return true if the specified object is equal to this GameState; false otherwise
+     * Determines whether the current instance is equal to the specified object.
+     * Two GameState objects are considered equal if their respective fields,
+     * such as imageVersion, skipsRemaining, gameStartTime, currentAnswer,
+     * gameStage, and currentMovie, are equal.
+     * @param o the object to compare with the current GameState instance
+     * @return {@code true} if the specified object is a GameState instance
+     *         and all relevant fields are equal; otherwise, {@code false}
      */
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof GameState gameState)) return false;
-        return getImageVersion() == gameState.getImageVersion() && getSkipsRemaining() == gameState.getSkipsRemaining() && getGameStartTime() == gameState.getGameStartTime() && Objects.equals(getCurrentAnswer(), gameState.getCurrentAnswer()) && getGameStage() == gameState.getGameStage();
+        return getImageVersion() == gameState.getImageVersion() && getSkipsRemaining() == gameState.getSkipsRemaining() && getGameStartTime() == gameState.getGameStartTime() && Objects.equals(getCurrentAnswer(), gameState.getCurrentAnswer()) && getGameStage() == gameState.getGameStage() && Objects.equals(getCurrentMovie(), gameState.getCurrentMovie());
     }
 
     /**
-     * Computes the hash code for the current state of the object.
-     * The hash code is calculated using the values of `imageVersion`,
-     * `skipsRemaining`, `currentAnswer`, `gameStage`, and `gameStartTime`.
-     *
-     * @return an integer hash code that uniquely identifies the state of the object.
+     * Computes the hash code for the current instance of the GameState object.
+     * The hash code is calculated based on the values of the following fields:
+     * - imageVersion
+     * - skipsRemaining
+     * - currentAnswer
+     * - gameStage
+     * - gameStartTime
+     * - currentMovie
+     * @return the hash code value for this GameState instance
      */
     @Override
     public int hashCode() {
-        return Objects.hash(getImageVersion(), getSkipsRemaining(), getCurrentAnswer(), getGameStage(), getGameStartTime());
+        return Objects.hash(getImageVersion(), getSkipsRemaining(), getCurrentAnswer(), getGameStage(), getGameStartTime(), getCurrentMovie());
+    }
+
+    /**
+     * Retrieves the title of the current movie in the game state.
+     * @return the title of the current movie as a String
+     */
+    public String getCurrentMovie() {
+        return currentMovie;
+    }
+
+    /**
+     * Sets the current movie associated with the game state.
+     * @param currentMovie the title of the current movie to set
+     */
+    public void setCurrentMovie(String currentMovie) {
+        this.currentMovie = currentMovie;
     }
 
     /**

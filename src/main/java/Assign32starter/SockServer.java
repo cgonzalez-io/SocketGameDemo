@@ -40,6 +40,7 @@ public class SockServer {
         int stopAfterSeconds = args.length > 2 ? Integer.parseInt(args[1]) : 0;
 
         // Schedule a stop task if a timeout is provided.
+        logger.info("Server starting on port {}. Stopping after {} seconds.", port, stopAfterSeconds);
         if (stopAfterSeconds > 0) {
             new java.util.Timer().schedule(new java.util.TimerTask() {
                 @Override

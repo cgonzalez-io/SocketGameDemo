@@ -48,9 +48,13 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
     boolean registered = false; // Flag to check if the player is registered
 
     /**
-     * Construct dialog
-     *
-     * @throws IOException
+     * Constructs a ClientGui object, initializes the GUI components, establishes
+     * a server connection, and handles the initial setup operations.
+     * @param host The hostname or IP address of the server to connect to.
+     * @param port The port number on the server to connect to.
+     * @throws IOException If an I/O error occurs during the server connection setup.
+     * @throws PicturePanel.InvalidCoordinateException If the PicturePanel is initialized
+     *                                                 with invalid coordinates.
      */
     public ClientGui(String host, int port) throws IOException, PicturePanel.InvalidCoordinateException {
         this.host = host;
