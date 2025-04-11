@@ -179,4 +179,22 @@ public class GameState {
     public void setGameStartTime(long gameStartTime) {
         this.gameStartTime = gameStartTime;
     }
+
+    /**
+     * Copies the state of the specified {@code GameState} object into the current instance.
+     * If the provided {@code GameState} object is {@code null}, the method does nothing.
+     * @param other the {@code GameState} object from which to copy the state.
+     *              This includes fields such as {@code imageVersion}, {@code skipsRemaining},
+     *              {@code currentAnswer}, {@code gameStage}, {@code gameStartTime}, and {@code currentMovie}.
+     */
+    public void copyFrom(GameState other) {
+        if (other == null) return;
+        this.imageVersion = other.imageVersion;
+        this.skipsRemaining = other.skipsRemaining;
+        this.currentAnswer = other.currentAnswer;
+        this.gameStage = other.gameStage;
+        this.gameStartTime = other.gameStartTime;
+        this.currentMovie = other.currentMovie;
+    }
+
 }

@@ -122,6 +122,30 @@ public class ClientHandler implements Runnable {
             String requestType = requestJson.getString("type");
             logger.debug("Processing request type: {}", requestType);
 
+            // For most requests (other than registration), a sessionID is required.
+            // Here we assume the "name" request is for registration and does not include a sessionID.
+            if (!requestType.equals("name") && !requestType.equals("start")) {
+                if (!requestJson.has("sessionID")) {
+                    response.put("type", "error");
+                    response.put("ok", false);
+                    response.put("message", "Missing sessionID. Please log in again.");
+                    return response;
+                }
+                String sessionID = requestJson.getString("sessionID");
+                // Retrieve the persistent GameState.
+                GameState state = SessionManager.getSession(sessionID);
+                if (state == null) {
+                    response.put("type", "error");
+                    response.put("ok", false);
+                    response.put("message", "Invalid session. Please log in again.");
+                    return response;
+                }
+                // Replace the local gameState with the persistent one.
+                // For subsequent processing, use "state" to refer to the current game state.
+                this.gameState.copyFrom(state);
+            }
+
+            // Process the request by type.
             switch (requestType) {
                 case "start":
                     // Initial handshake: request the player's name.
@@ -134,8 +158,11 @@ public class ClientHandler implements Runnable {
                 case "name":
                     // The client has provided their name.
                     String playerName = requestJson.getString("value");
+                    // Create a new persistent session.
+                    String sessionId = SessionManager.createSession(this.gameState);
                     response.put("type", "greeting");
                     response.put("ok", true);
+                    response.put("sessionID", sessionId);
                     response.put("value", "Welcome " + playerName
                             + "! Please type 'play' to start the game, or 'quit' to exit.");
                     break;

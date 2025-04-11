@@ -46,13 +46,16 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
     String host;
     int port;
     boolean registered = false; // Flag to check if the player is registered
+    private String sessionID = null;
+
 
     /**
      * Constructs a ClientGui object, initializes the GUI components, establishes
      * a server connection, and handles the initial setup operations.
+     *
      * @param host The hostname or IP address of the server to connect to.
      * @param port The port number on the server to connect to.
-     * @throws IOException If an I/O error occurs during the server connection setup.
+     * @throws IOException                             If an I/O error occurs during the server connection setup.
      * @throws PicturePanel.InvalidCoordinateException If the PicturePanel is initialized
      *                                                 with invalid coordinates.
      */
@@ -230,13 +233,30 @@ public class ClientGui implements Assign32starter.OutputPanel.EventHandlers {
                 // First input is assumed to be the player's name.
                 request.put("type", "name");
                 request.put("value", input);
+                // Send the registration request.
+                os.writeObject(request.toString());
+                os.flush();
+
+                // Wait for the response.
+                String responseStr = bufferedReader.readLine();
+                JSONObject response = new JSONObject(responseStr);
+
+                // Assuming the server sends sessionID along with the greeting.
+                if (response.has("sessionID")) {
+                    sessionID = response.getString("sessionID");
+                }
+
+                // Display the greeting.
+                outputPanel.appendOutput(response.getString("value"));
                 registered = true;
             } else if (input.equalsIgnoreCase("play")) {
                 // Start or restart the game.
                 request.put("type", "gameStart");
+                request.put("sessionID", sessionID);
             } else {
                 // Process in-game commands.
                 request.put("type", "game");
+                request.put("sessionID", sessionID);
                 if (input.toLowerCase().startsWith("guess:")) {
                     request.put("command", "guess");
                     String answer = input.substring(6).trim();
